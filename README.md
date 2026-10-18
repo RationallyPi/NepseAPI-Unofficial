@@ -5,6 +5,12 @@
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Educational Use](https://img.shields.io/badge/Use-Educational%20%26%20Research-green.svg)
 
+> **Personal fork note (not upstream).** This copy is deployed on a free Render instance and adds an
+> API key gate: with the `API_KEY` environment variable set, every route except `/health` requires an
+> `X-Api-Key` header. The Dockerfile is slimmed down to run only the REST API via
+> `uvicorn server:app` on `$PORT` (no MCP, WebSocket or stock-map updater). All credit for the
+> original service goes to [surajrimal07/NepseAPI-Unofficial](https://github.com/surajrimal07/NepseAPI-Unofficial) (MIT).
+
 An unofficial API service for Nepal Stock Exchange (NEPSE) that provides real-time market data through REST, WebSocket, and Model Context Protocol (MCP) endpoints.
 
 ## ⚠️ VERY IMPORTANT: Legal & Liability Disclaimer

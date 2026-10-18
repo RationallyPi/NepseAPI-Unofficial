@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from nepse import AsyncNepse
 import logging
+import os
 import time
 
 # Import validation utilities
@@ -52,6 +53,20 @@ async def rate_limit_middleware(request: Request, call_next):
         response.headers[key] = value
 
     return response
+
+# Personal API key gate (added in this fork). Set the API_KEY environment variable to require
+# the X-Api-Key header on every route except /health. /health stays open for uptime pingers.
+API_KEY = os.environ.get("API_KEY", "")
+
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    if API_KEY and request.url.path != "/health":
+        if request.headers.get("X-Api-Key") != API_KEY:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "Unauthorized", "message": "Missing or invalid X-Api-Key header."},
+            )
+    return await call_next(request)
 
 # Common validation helper functions
 def validate_stock_or_raise(symbol: str) -> str:
