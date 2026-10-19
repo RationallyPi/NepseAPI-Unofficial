@@ -147,6 +147,26 @@ HEADERS = {
     "Cache-Control": "public, max-age=30"
 }
 
+# Live endpoints: the app polls these during trading sessions for up-to-date LTPs.
+# Don't let any intermediary cache them, and reuse a fetch for a couple of seconds
+# so rapid reloads / retries don't hammer nepse.com.
+LIVE_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "no-store"
+}
+
+BURST_GUARD_SECONDS = 2.0
+_burst_cache: dict = {}
+
+async def fetch_with_burst_guard(key: str, fetch):
+    now = time.monotonic()
+    hit = _burst_cache.get(key)
+    if hit and now - hit[0] < BURST_GUARD_SECONDS:
+        return hit[1]
+    data = await fetch()
+    _burst_cache[key] = (now, data)
+    return data
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
@@ -281,8 +301,8 @@ async def get_top_losers():
 @app.get(routes["IsNepseOpen"])
 async def is_nepse_open():
     logger.info("IsNepseOpen endpoint called")
-    data = await nepseAsync.isNepseOpen()
-    return JSONResponse(content=data, headers=HEADERS)
+    data = await fetch_with_burst_guard("IsNepseOpen", nepseAsync.isNepseOpen)
+    return JSONResponse(content=data, headers=LIVE_HEADERS)
 
 
 @app.get(routes["DailyNepseIndexGraph"])
@@ -399,8 +419,8 @@ async def get_company_details(symbol: str):
 
 @app.get(routes["PriceVolume"])
 async def get_price_volume():
-    data = await nepseAsync.getPriceVolume()
-    return JSONResponse(content=data, headers=HEADERS)
+    data = await fetch_with_burst_guard("PriceVolume", nepseAsync.getPriceVolume)
+    return JSONResponse(content=data, headers=LIVE_HEADERS)
 
 
 @app.get(routes["PriceVolumeHistory"])
